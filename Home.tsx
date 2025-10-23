@@ -18,6 +18,7 @@ import RunnerGallery from "../components/RunnerGallery";
 import QuantitySelector from "../components/QuantitySelector";
 import { printTickets } from "../lib/print";
 import type { Part, Runner } from "../types";
+import AddPartForm from "../components/AddPartForm"; // <-- TAMBAHAN BARU
 
 /**
  * Simple status banner for user feedback
@@ -53,18 +54,35 @@ export default function HomePage() {
   const [submitting, setSubmitting] = React.useState(false);
   const [status, setStatus] = React.useState<{ kind: "info" | "success" | "error"; message: string } | null>(null);
 
+  // Fungsi untuk muat semula (refresh) data parts
+  const loadData = async () => {
+    try {
+      const [p, r] = await Promise.all([fetchParts(), fetchRunners()]);
+      setParts(p);
+      setRunners(r);
+    } catch {
+      // Biarkan data sedia ada jika gagal
+      console.error("Gagal memuat semula data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   React.useEffect(() => {
     let mounted = true;
     (async () => {
+      setLoading(true); // Tunjuk 'loading' bila 'refresh'
       try {
         const [p, r] = await Promise.all([fetchParts(), fetchRunners()]);
         if (!mounted) return;
         setParts(p);
         setRunners(r);
-        setLoading(false);
       } catch {
-        if (!mounted) return;
-        setLoading(false);
+        // Ralat akan ditangkap oleh fallback dalam api.ts
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
       }
     })();
     return () => {
@@ -98,6 +116,13 @@ export default function HomePage() {
     }
   }
 
+  // Fungsi untuk 'refresh' senarai parts selepas berjaya tambah part baru
+  const handlePartAdded = () => {
+    setStatus({ kind: "success", message: "Part baru berjaya ditambah! Memuat semula senarai..." });
+    setLoading(true); // Tunjuk loading
+    loadData(); // Panggil data baru dari server
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       {/* Header */}
@@ -105,7 +130,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img
-              src="https://pub-cdn.sider.ai/u/U0Z6H6O5A87/web-coder/68f8e67b14c697e997a39c2b/resource/ff9a6596-ca73-4376-a131-71324bf3ff5f.jpg"
+              src="https://pub-cdn.sider.ai/u/U0Z6H6O5A87/web-coder/68f8e67b14c697e997a3b/resource/ff9a6596-ca73-4376-a131-71324bf3ff5f.jpg"
               className="h-10 w-10 rounded object-cover"
             />
             <h1 className="text-2xl font-bold text-gray-900">FG Ticket Printer</h1>
@@ -116,7 +141,7 @@ export default function HomePage() {
 
       {/* Content */}
       <main className="mx-auto max-w-6xl px-4 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <section className="lg:col-span-2">
+        <section className="lg:col-span-2 space-y-6">
           <div className="flex items-end justify-between mb-4">
             <div>
               <h2 className="text-xl font-bold text-gray-900">Finished Good Parts</h2>
@@ -141,6 +166,11 @@ export default function HomePage() {
           ) : (
             <div className="text-center py-12 text-gray-600 text-lg">No parts available</div>
           )}
+
+          {/* --- BORANG BARU DITAMBAH DI SINI --- */}
+          {/* Kita hantar 'onPartAdded' supaya borang boleh panggil 'loadData' */}
+          <AddPartForm onPartAdded={handlePartAdded} />
+          
         </section>
 
         <aside className="lg:col-span-1">
